@@ -7,6 +7,7 @@ class Description(BaseModel):
 
 
 class ErrorItem(BaseModel):
+    id: str
     type: str                # spelling | grammar
     bad: str
     better: List[str]
