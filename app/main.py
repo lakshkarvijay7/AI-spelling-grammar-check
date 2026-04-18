@@ -18,6 +18,10 @@ class CheckRequest(BaseModel):
         default_factory=lambda: ["spelling", "grammar"],
         description='Issues to include. Use ["spelling"], ["grammar"], or both (default).',
     )
+    language: str | None = Field(
+        default=None,
+        description='Language variant for checking, e.g. "en-US" or "en-GB". Defaults to "en-US".',
+    )
 
     @field_validator("text", mode="before")
     @classmethod
@@ -46,7 +50,7 @@ class CheckRequest(BaseModel):
 
 @app.post("/check", response_model=APIResponse)
 async def check_spelling_grammar(req: CheckRequest):
-    errors = await asyncio.to_thread(check_text, req.text, frozenset(req.types))
+    errors = await asyncio.to_thread(check_text, req.text, frozenset(req.types), req.language)
 
     return APIResponse(
         status=True,
