@@ -1,7 +1,9 @@
 import asyncio
+import os
+import secrets
 from typing import Literal
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware  # ✅ ADD THIS
 from pydantic import BaseModel, Field, field_validator
 
@@ -9,6 +11,7 @@ from app.models.response import APIResponse, ResponseData
 from app.services.checker import check_text, warm_tools
 
 app = FastAPI()
+API_KEY = os.getenv("API_KEY", "").strip()
 
 # ✅ ADD CORS CONFIG HERE
 origins = [
@@ -69,8 +72,22 @@ class CheckRequest(BaseModel):
         return out
 
 
+def require_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> None:
+    if not API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server API key is not configured.",
+        )
+
+    if x_api_key is None or not secrets.compare_digest(x_api_key, API_KEY):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key.",
+        )
+
+
 @app.post("/check", response_model=APIResponse)
-async def check_spelling_grammar(req: CheckRequest):
+async def check_spelling_grammar(req: CheckRequest, _: None = Depends(require_api_key)):
     errors = await asyncio.to_thread(
         check_text,
         req.text,
